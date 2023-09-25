@@ -59,7 +59,7 @@ def delete_repo(test_repo):
     resp = requests.delete(f'https://api.github.com/repos/{test_repo}', headers=headers)
 
 
-def get_contribs(test_branch):
+def get_contribs(test_branch, test_repo):
     """Get contributors from test branch.
     """
     headers = {
@@ -68,7 +68,7 @@ def get_contribs(test_branch):
     }
 
     time.sleep(10)
-    commits = requests.get(f'https://api.github.com/repos/{TEST_REPO}/commits?sha={test_branch}',headers=headers)
+    commits = requests.get(f'https://api.github.com/repos/{test_repo}/commits?sha={test_branch}',headers=headers)
     list_commits = commits.json()
 
 
@@ -130,5 +130,5 @@ if sanity == 200:
     repo_name = create_repo()
     if repo_name:
         push_email_commits(to_check, repo_name)
-        get_contribs("main")
+        get_contribs("main", repo_name)
         delete_repo(repo_name)
