@@ -18,7 +18,7 @@ def create_repo():
         "Authorization": TEST_PAT
     }
 
-    repo_name = binascii.b2a_hex(os.urandom(15))
+    repo_name = binascii.b2a_hex(os.urandom(15)).decode()
     params = {
         "name": repo_name,
         "private": "true"
@@ -29,6 +29,18 @@ def create_repo():
     if resp.status_code == 201:
         return repo_name
 
+def get_user():
+    """Get auth user.
+    """
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "Authorization": TEST_PAT
+    }
+
+    resp = requests.get(f'https://api.github.com/user', headers = headers)
+
+    return resp.json()['login']
+
 def push_email_commits(emails, repo_name):
     """Push commits, 1 dummy file per email.
     """
@@ -38,7 +50,7 @@ def push_email_commits(emails, repo_name):
     }
 
     for email in emails:
-        rand_file = binascii.b2a_hex(os.urandom(15))
+        rand_file = binascii.b2a_hex(os.urandom(15)).decode()
         params = {
             "committer": {"name":"TestUser", "email": f"{email}"},
             "content": "SGF4b3I=",
@@ -71,7 +83,6 @@ def get_contribs(test_branch, test_repo):
     commits = requests.get(f'https://api.github.com/repos/{test_repo}/commits?sha={test_branch}',headers=headers)
     list_commits = commits.json()
 
-
     for commit in list_commits:
         print(commit['author']['login']+":"+ commit['commit']['author']['email'])
 
@@ -95,7 +106,6 @@ def establish_session():
     page = sess.get('https://github.com/join')
     soup = BeautifulSoup(page.content, 'html.parser')
 
-
     auth_tok = soup.find_all('auto-check', {"src":"/signup_check/email"})
     tok = auth_tok[0].find('input', {"type":"hidden"})
 
@@ -104,31 +114,45 @@ def establish_session():
     return sess, csrf_token
 
 
-session, csrf_token = establish_session()
-sanity = check_email(session, "fewhvewhvpeqjcwpnvewhpihge@foobar.com", csrf_token)
+def get_email_status(email_list):
+    """Gets status of an email.
+    """
 
-if sanity == 200:
-    print('Sanity check email returned 200, email query endpoint is good.')
+    session, csrf_token = establish_session()
+    sanity = check_email(session, "fewhvewhvpeqjcwpnvewhpihge@foobar.com", csrf_token)
 
-    with open('email_list.txt', 'r') as infile:
-        email_list = [line.rstrip() for line in infile]
+    if sanity == 200:
+        print('Sanity check email returned 200, email query endpoint is good.')
+        for email in email_list:
+        
+            while True:
+                code = check_email(session, email, csrf_token)
+                if code == 422:
+                    print(f"Email exists: {email}")
+                    yield(email)
+                    break
+                elif code == 429:
+                    print("Rate limited, sleeping!")
+                    time.sleep(120)
+                    continue
+                else:
+                    break
+    else:
+        print("Sanity check returned non-200, maybe the endpoint was updated!")
 
-    to_check = []
-    for email in email_list:
-        code = check_email(session, email, csrf_token)
-        if code == 422:
-            print(f"Email exists: {email}")
-            to_check.append(email)
-        elif code == 429:
-            print("Rate limited!")
-            time.sleep(90)
+email_list = []
 
+with open('email_list.txt', 'r') as infile:
+    email_list = [line.rstrip() for line in infile]
 
-    if len (to_check) == 0:
-        exit(0)
+emails = [email for email in get_email_status(email_list)]
 
-    repo_name = create_repo()
-    if repo_name:
-        push_email_commits(to_check, repo_name)
-        get_contribs("main", repo_name)
-        delete_repo(repo_name)
+if len (emails) == 0:
+    exit(0)
+
+repo_name = create_repo()
+if repo_name:
+    user = get_user()
+    push_email_commits(emails, user + "/" + repo_name)
+    get_contribs("main", user + "/" + repo_name)
+    delete_repo(repo_name)
