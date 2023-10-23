@@ -119,22 +119,24 @@ def get_email_status(email_list):
     """
 
     session, csrf_token = establish_session()
-    sanity = check_email(session, "fewhvewhvpeqjcwpnvewhpihge@foobar.com", csrf_token)
+    sanity = check_email(session, f"{binascii.b2a_hex(os.urandom(15)).decode()}@foobar.com", csrf_token)
 
     if sanity == 200:
         print('Sanity check email returned 200, email query endpoint is good.')
         for email in email_list:
-        
             while True:
-                code = check_email(session, email, csrf_token)
+                checked = False
+                while not checked:
+                    code = check_email(session, email, csrf_token)
+                    if code == 429:
+                        print("Rate limited, sleeping!")
+                        time.sleep(120)
+                    else:
+                        checked = True    
                 if code == 422:
                     print(f"Email exists: {email}")
                     yield(email)
                     break
-                elif code == 429:
-                    print("Rate limited, sleeping!")
-                    time.sleep(120)
-                    continue
                 else:
                     break
     else:
