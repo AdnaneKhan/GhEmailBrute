@@ -1,5 +1,6 @@
 # GhEmailBrute
-A tool to link any email with a GitHub account, even if the email is private.
+
+A simple tool check if a list of emails is associated with GitHub accounts, and to determine the specific accounts (even if the account is private).
 
 ## Use Cases
 
