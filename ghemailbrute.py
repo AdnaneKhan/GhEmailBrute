@@ -94,7 +94,7 @@ def check_email(session, email, csrf_token):
         "authenticity_token": csrf_token,
         "value": email
     }
-    res = session.post('https://github.com/signup_check/email', data=params)
+    res = session.post('https://github.com/email_validity_checks', data=params)
 
     return res.status_code
 
@@ -106,7 +106,7 @@ def establish_session():
     page = sess.get('https://github.com/join')
     soup = BeautifulSoup(page.content, 'html.parser')
 
-    auth_tok = soup.find_all('auto-check', {"src":"/signup_check/email"})
+    auth_tok = soup.find_all('auto-check', {"src":"/email_validity_checks"})
     tok = auth_tok[0].find('input', {"type":"hidden"})
 
     csrf_token = tok.get('value')
