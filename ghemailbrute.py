@@ -70,7 +70,6 @@ def delete_repo(test_repo):
 
     resp = requests.delete(f'https://api.github.com/repos/{test_repo}', headers=headers)
 
-
 def get_contribs(test_branch, test_repo):
     """Get contributors from test branch.
     """
@@ -84,8 +83,14 @@ def get_contribs(test_branch, test_repo):
     list_commits = commits.json()
 
     for commit in list_commits:
-        print(commit['author']['login']+":"+ commit['commit']['author']['email'])
-
+        # Check if author exists (it's None when email isn't linked to a GitHub account)
+        if commit.get('author') and commit['author']:
+            login = commit['author']['login']
+        else:
+            login = "No GitHub Account"
+        
+        email = commit['commit']['author']['email']
+        print(f"{login}:{email}")
 
 def check_email(session, email, csrf_token):
     """Checks if the email is associated with a GitHub account or not.
@@ -112,7 +117,6 @@ def establish_session():
     csrf_token = tok.get('value')
 
     return sess, csrf_token
-
 
 def get_email_status(email_list):
     """Gets status of an email.
